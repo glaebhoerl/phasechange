@@ -1,0 +1,58 @@
+name:          phasechange
+category:      ??
+version:       0.1
+author:        Gábor Lehel
+maintainer:    Gábor Lehel <illissius@gmail.com>
+homepage:      http://github.com/glehel/phasechange
+copyright:     Copyright (C) 2012 Gábor Lehel
+license:       BSD3
+license-file:  LICENSE
+stability:     experimental
+cabal-version: >= 1.10
+build-type:    Simple
+synopsis:      ??
+description:
+    ??
+
+source-repository head
+    type:      git
+    location:  git://github.com/glehel/phasechange.git
+
+library
+    default-language:
+        Haskell98
+
+    other-extensions:
+        Unsafe,
+        Trustworthy,
+        MagicHash,
+        Rank2Types,
+        TypeFamilies,
+        ConstraintKinds,
+        FlexibleContexts,
+        FlexibleInstances,
+        UndecidableInstances,
+        MultiParamTypeClasses
+
+    build-depends:
+        base >= 4.4 && < 4.6,
+        ghc-prim,
+        primitive == 0.4.*,
+        newtype   == 0.2.*,
+        monad-st  == 0.2.*,
+        array     == 0.4.*,
+        vector    == 0.9.*
+
+    exposed-modules:
+        Data.PhaseChange
+        Data.PhaseChange.Unsafe
+        Data.PhaseChange.Impl
+
+    other-modules:
+        Data.PhaseChange.Internal
+        Data.PhaseChange.Instances
+
+    include-dirs: .
+
+    ghc-options:
+        -Wall
