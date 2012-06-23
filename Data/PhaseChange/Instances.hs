@@ -2,24 +2,25 @@
 
 {-# OPTIONS_HADDOCK hide #-}
 
-{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-name-shadowing -fno-warn-unused-binds #-}
 
 module Data.PhaseChange.Instances () where
 
 import Data.PhaseChange.Internal
 import Control.Monad
 import Control.Monad.ST
---import Control.Monad.Primitive
---import System.IO.Unsafe
 import Unsafe.Coerce
 import GHC.Exts
 
+-- they sure made a big mess out of the Array modules...
 import Data.Primitive.Array        as Prim
 import Data.Primitive.ByteArray    as Prim
-import Data.Array                  as Arr
-import Data.Array.ST               as Arr
-import Data.Array.MArray           as Arr
-import Data.Array.Unboxed          as Arr
+import Data.Array                  as Arr  (Array)
+import Data.Array.ST               as Arr  (STArray, STUArray)
+import Data.Array.Unboxed          as Arr  (UArray)
+import Data.Array.IArray           as Arr  (IArray, Ix)
+import Data.Array.MArray           as Arr  (MArray, mapArray)
+import Data.Array.Unsafe           as Arr  (unsafeThaw, unsafeFreeze)
 import Data.Vector                 as Vec
 import Data.Vector.Primitive       as PVec
 import Data.Vector.Unboxed         as UVec
@@ -59,7 +60,8 @@ type WithMArray stArray s a = forall r. (MArray (stArray s) a (ST s) => r) -> r
 mArray :: MArray (stArray s) a (ST s) => WithMArray stArray s a
 mArray a = a
 
-newtype S = S S --do not export!!
+-- do not export!!
+newtype S = S S
 
 anyS :: WithMArray stArray S a -> WithMArray stArray s a
 anyS = unsafeCoerce
@@ -69,8 +71,8 @@ hack _ = anyS mArray
 
 -- | Data.Array
 instance (Ix i, IArray Arr.Array a, MArray (Arr.STArray S) a (ST S)) => PhaseChange (Arr.Array i a) (M2 Arr.STArray i a) where
-    type Thawed (   Arr.Array   i a) = M2 Arr.STArray i a
-    type Frozen (M2 Arr.STArray i a) =    Arr.Array   i a
+    type Thawed (Arr.Array i a)      = M2 Arr.STArray i a
+    type Frozen (M2 Arr.STArray i a) = Arr.Array i a
     unsafeThawImpl   a = r where r = hack r (liftM M2 $ Arr.unsafeThaw a)
     unsafeFreezeImpl a = hack (return a) (Arr.unsafeFreeze $ unM2 a)
     copyImpl         a = hack (return a) (liftM M2 . mapArray id . unM2 $ a)
