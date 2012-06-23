@@ -54,34 +54,34 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
         copyMutableArray new 0 old 0 size
         return (M1 new)
 
-type MA stA s a = forall r. (MArray (stA s) a (ST s) => r) -> r
+type WithMArray stArray s a = forall r. (MArray (stArray s) a (ST s) => r) -> r
 
-ma :: MArray (stA s) a (ST s) => MA stA s a
-ma a = a
+mArray :: MArray (stArray s) a (ST s) => WithMArray stArray s a
+mArray a = a
 
-newtype S = S S -- do not export!!
+newtype S = S S --do not export!!
 
-anyS' :: MA stA S a -> MA stA s a
-anyS' = unsafeCoerce
+anyS :: WithMArray stArray S a -> WithMArray stArray s a
+anyS = unsafeCoerce
 
-foo :: MArray (stA S) a (ST S) => ST s (M2 stA i a s) -> MA stA s a
-foo _ = anyS' ma
+hack :: MArray (stArray S) a (ST S) => ST s (M2 stArray i a s) -> WithMArray stArray s a
+hack _ = anyS mArray
 
 -- | Data.Array
 instance (Ix i, IArray Arr.Array a, MArray (Arr.STArray S) a (ST S)) => PhaseChange (Arr.Array i a) (M2 Arr.STArray i a) where
-    type Thawed (Arr.Array i a)      = M2 Arr.STArray i a
-    type Frozen (M2 Arr.STArray i a) = Arr.Array i a
-    unsafeThawImpl   a = r where r = foo r (liftM M2 $ Arr.unsafeThaw a)
-    unsafeFreezeImpl a = foo (return a) (Arr.unsafeFreeze $ unM2 a)
-    copyImpl         a = foo (return a) (liftM M2 . mapArray id . unM2 $ a)
+    type Thawed (   Arr.Array   i a) = M2 Arr.STArray i a
+    type Frozen (M2 Arr.STArray i a) =    Arr.Array   i a
+    unsafeThawImpl   a = r where r = hack r (liftM M2 $ Arr.unsafeThaw a)
+    unsafeFreezeImpl a = hack (return a) (Arr.unsafeFreeze $ unM2 a)
+    copyImpl         a = hack (return a) (liftM M2 . mapArray id . unM2 $ a)
 
 -- | Data.Array.Unboxed
 instance (Ix i, IArray Arr.UArray a, MArray (Arr.STUArray S) a (ST S)) => PhaseChange (Arr.UArray i a) (M2 Arr.STUArray i a) where
     type Thawed (Arr.UArray i a)      = M2 Arr.STUArray i a
     type Frozen (M2 Arr.STUArray i a) = Arr.UArray i a
-    unsafeThawImpl   a = r where r = foo r (liftM M2 $ Arr.unsafeThaw a)
-    unsafeFreezeImpl a = foo (return a) (Arr.unsafeFreeze $ unM2 a)
-    copyImpl         a = foo (return a) (liftM M2 . mapArray id . unM2 $ a)
+    unsafeThawImpl   a = r where r = hack r (liftM M2 $ Arr.unsafeThaw a)
+    unsafeFreezeImpl a = hack (return a) (Arr.unsafeFreeze $ unM2 a)
+    copyImpl         a = hack (return a) (liftM M2 . mapArray id . unM2 $ a)
 
 -- | Data.Vector
 instance PhaseChange (Vec.Vector a) (M1 Vec.MVector a) where
