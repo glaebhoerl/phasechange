@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, Rank2Types, MagicHash, EmptyDataDecls, UndecidableInstances, ScopedTypeVariables, GADTs, ConstraintKinds #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, Rank2Types, MagicHash, UndecidableInstances, ScopedTypeVariables, GADTs, ConstraintKinds #-}
 
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -59,7 +59,7 @@ instance (Ix i, IArray iA a, MArray (stA s) a (ST s), iA i a ~ Frozen (M2 stA i 
 
 data C c where C :: c => C c
 
-data S
+newtype S = S S -- do not export!!
 anyS :: forall iA stA i a. ArrC iA stA S i a => (forall s. C (ArrC iA stA s i a))
 anyS = unsafeCoerce (C :: C (ArrC iA stA S i a))
 
