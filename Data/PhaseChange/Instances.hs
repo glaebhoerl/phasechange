@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, Rank2Types, MagicHash, UndecidableInstances, ScopedTypeVariables, GADTs, ConstraintKinds #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, RankNTypes, MagicHash #-}
 
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -54,41 +54,34 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
         copyMutableArray new 0 old 0 size
         return (M1 new)
 
-class    (Ix i, IArray iA a, MArray (stA s) a (ST s), iA i a ~ Frozen (M2 stA i a)) => ArrC iA stA s i a
-instance (Ix i, IArray iA a, MArray (stA s) a (ST s), iA i a ~ Frozen (M2 stA i a)) => ArrC iA stA s i a
+type MA stA s a = forall r. (MArray (stA s) a (ST s) => r) -> r
 
-data C c where C :: c => C c
+ma :: MArray (stA s) a (ST s) => MA stA s a
+ma a = a
 
 newtype S = S S -- do not export!!
-anyS :: forall iA stA i a. ArrC iA stA S i a => (forall s. C (ArrC iA stA s i a))
-anyS = unsafeCoerce (C :: C (ArrC iA stA S i a))
 
-unsafeThawImpl_Arr :: forall iA stA s i a. ArrC iA stA S i a => iA i a -> ST s (stA s i a)
-unsafeThawImpl_Arr a = case anyS of (C :: C (ArrC iA stA s i a)) -> (Arr.unsafeThaw a :: ST s (stA s i a))
+anyS' :: MA stA S a -> MA stA s a
+anyS' = unsafeCoerce
 
-unsafeFreezeImpl_Arr :: forall iA stA s i a. ArrC iA stA S i a => stA s i a -> ST s (iA i a)
-unsafeFreezeImpl_Arr a = case anyS of (C :: C (ArrC iA stA s i a)) -> (Arr.unsafeFreeze a :: ST s (iA i a))
-
-copyImpl_Arr :: forall iA stA s i a. ArrC iA stA S i a => stA s i a -> ST s (stA s i a)
-copyImpl_Arr a = case anyS of (C :: C (ArrC iA stA s i a)) -> mapArray id a
-
--- fuck this is ugly
+foo :: MArray (stA S) a (ST S) => ST s (M2 stA i a s) -> MA stA s a
+foo _ = anyS' ma
 
 -- | Data.Array
 instance (Ix i, IArray Arr.Array a, MArray (Arr.STArray S) a (ST S)) => PhaseChange (Arr.Array i a) (M2 Arr.STArray i a) where
     type Thawed (Arr.Array i a)      = M2 Arr.STArray i a
     type Frozen (M2 Arr.STArray i a) = Arr.Array i a
-    unsafeThawImpl   = liftM M2 . unsafeThawImpl_Arr
-    unsafeFreezeImpl = unsafeFreezeImpl_Arr . unM2
-    copyImpl         = liftM M2 . copyImpl_Arr . unM2
+    unsafeThawImpl   a = r where r = foo r (liftM M2 $ Arr.unsafeThaw a)
+    unsafeFreezeImpl a = foo (return a) (Arr.unsafeFreeze $ unM2 a)
+    copyImpl         a = foo (return a) (liftM M2 . mapArray id . unM2 $ a)
 
 -- | Data.Array.Unboxed
 instance (Ix i, IArray Arr.UArray a, MArray (Arr.STUArray S) a (ST S)) => PhaseChange (Arr.UArray i a) (M2 Arr.STUArray i a) where
     type Thawed (Arr.UArray i a)      = M2 Arr.STUArray i a
     type Frozen (M2 Arr.STUArray i a) = Arr.UArray i a
-    unsafeThawImpl   = liftM M2 . unsafeThawImpl_Arr
-    unsafeFreezeImpl = unsafeFreezeImpl_Arr . unM2
-    copyImpl         = liftM M2 . copyImpl_Arr . unM2
+    unsafeThawImpl   a = r where r = foo r (liftM M2 $ Arr.unsafeThaw a)
+    unsafeFreezeImpl a = foo (return a) (Arr.unsafeFreeze $ unM2 a)
+    copyImpl         a = foo (return a) (liftM M2 . mapArray id . unM2 $ a)
 
 -- | Data.Vector
 instance PhaseChange (Vec.Vector a) (M1 Vec.MVector a) where
