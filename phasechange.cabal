@@ -28,7 +28,6 @@ library
         MagicHash,
         Rank2Types,
         TypeFamilies,
-        ConstraintKinds,
         FlexibleContexts,
         FlexibleInstances,
         UndecidableInstances,

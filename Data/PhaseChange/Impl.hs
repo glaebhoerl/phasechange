@@ -2,12 +2,7 @@
 
 module Data.PhaseChange.Impl
     (
--- * Kind @*@
-    PhaseChange(..),
--- * Kind @* -> *@
-    PhaseChange1(..),
--- * Kind @* -> * -> *@
-    PhaseChange2(..)
+    PhaseChange(..), M1(..), M2(..)
     )
     where
 
