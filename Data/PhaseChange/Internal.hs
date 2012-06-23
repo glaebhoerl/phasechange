@@ -56,6 +56,18 @@ updateWith :: Immutable imm => (forall s. Thawed imm s -> ST s ()) -> imm -> imm
 updateWith f a = runST $ do { m <- thaw a; f m; i <- unsafeFreeze m; return i }
 {-# INLINABLE updateWith #-}
 
+updateWithResult :: Immutable imm => (forall s. Thawed imm s -> ST s a) -> imm -> (imm, a)
+updateWithResult f a = runST $ do { m <- thaw a; r <- f m; i <- unsafeFreeze m; return (i, r) }
+{-# INLINABLE updateWithResult #-}
+
+--updateManyWith :: (Immutable imm, Functor f) => (forall s. f (Thawed imm s) -> ST s ()) -> f imm -> f imm
+--updateManyWith f a = runST $ do { 
+
+-- is this safe?
+readWith :: Mutable mut => (Frozen mut -> a) -> mut s -> ST s a
+readWith f a = do { i <- unsafeFreeze a; r <- return =<< (return $! (f $! i)); _ <- unsafeThaw i; return r }
+{-# INLINABLE readWith #-}
+
 --withPlus :: Immutable a => a -> (forall s. Thawed a s -> ST s (Thawed a s, b)) -> (a, b)
 
 
