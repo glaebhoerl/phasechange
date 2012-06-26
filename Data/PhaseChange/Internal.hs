@@ -47,21 +47,23 @@ unsafeFreeze = liftST . unsafeFreezeImpl
 copy :: (Mutable mut, MonadST mST, s ~ World mST) => mut s -> mST (mut s)
 copy = liftST . copyImpl
 {-# INLINABLE copy #-}
-{-# SPECIALIZE copy :: (Mutable mut) => mut s -> ST s (mut s) #-}
+{-# SPECIALIZE copy :: (Mutable mut, s ~ World (ST s)) => mut s -> ST s (mut s) #-}
 {-# SPECIALIZE copy :: (Mutable mut, s ~ RealWorld) => mut s -> IO (mut s) #-}
--- NOTE this is fragile
--- It only works if I pre-expand the World type family, but if I were to use World mST
--- directly in the original signature instead of 's', then it would only work if I didn't.
--- GHC would say: "RULE left-hand side too complicated to desugar"
+-- NOTE this is extremely delicate!
+-- With IO it only works if I pre-expand the World type family, with ST it
+-- only works if I don't. And if I use World directly in the original signature
+-- instead of naming it 's', everything changes again.
+-- GHC says things like: "RULE left-hand side too complicated to desugar",
+-- or sometimes "match_co baling out"
 
 thaw :: (Immutable imm, MonadST mST, s ~ World mST) => imm -> mST (Thawed imm s)
-thaw = liftST . copyImpl <=< unsafeThaw
+thaw = copy <=< unsafeThaw
 {-# INLINABLE thaw #-}
 
 freeze :: (Mutable mut, MonadST mST, s ~ World mST) => mut s -> mST (Frozen mut)
 freeze = unsafeFreeze <=< copy
 {-# INLINABLE freeze #-}
-{-# SPECIALIZE freeze :: (Mutable mut) => mut s -> ST s (Frozen mut) #-}
+{-# SPECIALIZE freeze :: (Mutable mut, s ~ World (ST s)) => mut s -> ST s (Frozen mut) #-}
 {-# SPECIALIZE freeze :: (Mutable mut, s ~ RealWorld) => mut s -> IO (Frozen mut) #-}
 
 frozen :: Mutable mut => (forall s. ST s (mut s)) -> Frozen mut
