@@ -27,10 +27,11 @@ import Data.Vector.Unboxed         as UVec
 import Data.Vector.Storable        as SVec
 import Data.Vector.Generic.Mutable as GVec
 
-sizeofMutableArray :: Prim.MutableArray s a -> Int
-sizeofMutableArray (MutableArray a) = I# (sizeofMutableArray# a)
 
 -- * primitive
+
+sizeofMutableArray :: Prim.MutableArray s a -> Int
+sizeofMutableArray (MutableArray a) = I# (sizeofMutableArray# a)
 
 -- | Data.Primitive.ByteArray
 instance PhaseChange Prim.ByteArray Prim.MutableByteArray where
@@ -53,9 +54,10 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
     copyImpl mold = do
         let old  = unM1 mold
         let size = sizeofMutableArray old
-        new <- Prim.newArray size (error "error")
+        new <- Prim.newArray size (error "this can't be happening!")
         copyMutableArray new 0 old 0 size
         return (M1 new)
+
 
 -- * array
 
@@ -82,7 +84,7 @@ anyS = unsafeCoerce
 
 -- from locally available evidence of MArray for S, produce evidence we can use
 -- for any s. the first argument is just a dummy to bring type variables into scope,
--- chosen to be convenient for the particular use sites we have.
+-- chosen to be convenient for the particular use sites that we have.
 hack :: MArray (stArray S) a (ST S) => ST s (M2 stArray i a s) -> WithMArray stArray s a
 hack _ = anyS mArray
 
@@ -101,6 +103,7 @@ instance (Ix i, IArray Arr.UArray a, MArray (Arr.STUArray S) a (ST S)) => PhaseC
     unsafeThawImpl   a = r where r = hack r (liftM M2 $ Arr.unsafeThaw a)
     unsafeFreezeImpl a = hack (return a) (Arr.unsafeFreeze $ unM2 a)
     copyImpl         a = hack (return a) (liftM M2 . mapArray id . unM2 $ a)
+
 
 -- * vector
 
