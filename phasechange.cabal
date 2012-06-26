@@ -37,7 +37,7 @@ library
         base >= 4.4 && < 4.6,
         ghc-prim,
         primitive == 0.4.*,
-        newtype   == 0.2.*,
+--      newtype   == 0.2.*,
         monad-st  == 0.2.*,
         array     == 0.4.*,
         vector    == 0.9.*

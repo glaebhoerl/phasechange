@@ -1,15 +1,21 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, UndecidableInstances, Rank2Types #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, UndecidableInstances, Rank2Types, CPP #-}
+
+#if __GLASGOW_HASKELL__ >= 704
+{-# LANGUAGE ConstraintKinds #-}
+#else
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+#endif
+
 
 {-# OPTIONS_HADDOCK hide #-}
 
 module Data.PhaseChange.Internal where
 
-import System.IO.Unsafe
 import Control.Monad
 import Control.Monad.ST        (ST, runST)
-import Control.Monad.ST.Unsafe (unsafeSTToIO)
 import Control.Monad.ST.Class
-import Control.Newtype
+import GHC.Exts                (RealWorld)
+--import Control.Newtype
 
 class (Thawed imm ~ mut, Frozen mut ~ imm) => PhaseChange (imm :: *) (mut :: * -> *) where
     type Thawed imm  :: * -> *
@@ -18,14 +24,17 @@ class (Thawed imm ~ mut, Frozen mut ~ imm) => PhaseChange (imm :: *) (mut :: * -
     unsafeFreezeImpl :: mut s -> ST s (Frozen mut)
     copyImpl         :: mut s -> ST s (mut s)
 
-class    PhaseChange imm (Thawed imm) => Immutable imm
-instance PhaseChange imm (Thawed imm) => Immutable imm
-
+-- the type synonyms look nicer in the haddocks, otherwise it doesn't matter which one we use
+#if __GLASGOW_HASKELL__ >= 704
+type Mutable   mut = PhaseChange (Frozen mut) mut
+type Immutable imm = PhaseChange imm (Thawed imm)
+#else
 class    PhaseChange (Frozen mut) mut => Mutable mut
 instance PhaseChange (Frozen mut) mut => Mutable mut
 
-unsafePerformST :: ST s a -> a
-unsafePerformST = unsafePerformIO . unsafeSTToIO
+class    PhaseChange imm (Thawed imm) => Immutable imm
+instance PhaseChange imm (Thawed imm) => Immutable imm
+#endif
 
 unsafeThaw :: (Immutable imm, MonadST mST, s ~ World mST) => imm -> mST (Thawed imm s)
 unsafeThaw = liftST . unsafeThawImpl
@@ -38,9 +47,12 @@ unsafeFreeze = liftST . unsafeFreezeImpl
 copy :: (Mutable mut, MonadST mST, s ~ World mST) => mut s -> mST (mut s)
 copy = liftST . copyImpl
 {-# INLINABLE copy #-}
-{-# SPECIALIZE copy :: (Mutable mut, s ~ World (ST s)) => mut s -> ST s (mut s) #-}
---{-# SPECIALIZE copy :: (Mutable mut, s ~ World IO) => mut s -> IO (mut s) #-}
--- need to keep the World in; otherwise, GHC says "RULE left-hand side too complicated to desugar"
+{-# SPECIALIZE copy :: (Mutable mut) => mut s -> ST s (mut s) #-}
+{-# SPECIALIZE copy :: (Mutable mut, s ~ RealWorld) => mut s -> IO (mut s) #-}
+-- NOTE this is fragile
+-- It only works if I pre-expand the World type family, but if I were to use World mST
+-- directly in the original signature instead of 's', then it would only work if I didn't.
+-- GHC would say: "RULE left-hand side too complicated to desugar"
 
 thaw :: (Immutable imm, MonadST mST, s ~ World mST) => imm -> mST (Thawed imm s)
 thaw = liftST . copyImpl <=< unsafeThaw
@@ -49,11 +61,14 @@ thaw = liftST . copyImpl <=< unsafeThaw
 freeze :: (Mutable mut, MonadST mST, s ~ World mST) => mut s -> mST (Frozen mut)
 freeze = unsafeFreeze <=< copy
 {-# INLINABLE freeze #-}
-{-# SPECIALIZE freeze :: (Mutable mut, s ~ World (ST s)) => mut s -> ST s (Frozen mut) #-}
---{-# SPECIALIZE freeze :: (Mutable mut, s ~ World IO) => mut s -> IO (Frozen mut) #-}
+{-# SPECIALIZE freeze :: (Mutable mut) => mut s -> ST s (Frozen mut) #-}
+{-# SPECIALIZE freeze :: (Mutable mut, s ~ RealWorld) => mut s -> IO (Frozen mut) #-}
+
+frozen :: Mutable mut => (forall s. ST s (mut s)) -> Frozen mut
+frozen m = runST $ unsafeFreeze =<< m
 
 updateWith :: Immutable imm => (forall s. Thawed imm s -> ST s ()) -> imm -> imm
-updateWith f a = runST $ do { m <- thaw a; f m; i <- unsafeFreeze m; return i }
+updateWith f a = runST $ do { m <- thaw a; f m; unsafeFreeze m }
 {-# INLINABLE updateWith #-}
 
 updateWithResult :: Immutable imm => (forall s. Thawed imm s -> ST s a) -> imm -> (imm, a)
@@ -74,9 +89,9 @@ readWith f a = do { i <- unsafeFreeze a; r <- return =<< (return $! (f $! i)); _
 
 newtype M1 mut a s = M1 { unM1 :: mut s a }
 
-instance Newtype (M1 mut a s) (mut s a) where
-    pack   = M1
-    unpack = unM1
+--instance Newtype (M1 mut a s) (mut s a) where
+--    pack   = M1
+--    unpack = unM1
 
 unsafeThaw1 :: (PhaseChange (imm a) (M1 mut a), MonadST mST, s ~ World mST) => imm a -> mST (mut s a)
 unsafeThaw1 = liftM unM1 . unsafeThaw
@@ -105,9 +120,9 @@ updateWith1 f = updateWith (f . unM1)
 
 newtype M2 t a b s = M2 { unM2 :: t s a b }
 
-instance Newtype (M2 t a b s) (t s a b) where
-    pack   = M2
-    unpack = unM2
+--instance Newtype (M2 t a b s) (t s a b) where
+--    pack   = M2
+--    unpack = unM2
 
 unsafeThaw2 :: (PhaseChange (imm a b) (M2 mut a b), MonadST mST, s ~ World mST) => imm a b -> mST (mut s a b)
 unsafeThaw2 = liftM unM2 . unsafeThaw
