@@ -30,6 +30,8 @@ import Data.Vector.Generic.Mutable as GVec
 sizeofMutableArray :: Prim.MutableArray s a -> Int
 sizeofMutableArray (MutableArray a) = I# (sizeofMutableArray# a)
 
+-- * primitive
+
 -- | Data.Primitive.ByteArray
 instance PhaseChange Prim.ByteArray Prim.MutableByteArray where
     type Thawed Prim.ByteArray        = Prim.MutableByteArray
@@ -55,17 +57,32 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
         copyMutableArray new 0 old 0 size
         return (M1 new)
 
+-- * array
+
+-- NOTE
+-- for the Array types, we need to use a hack: we want to write "forall s. MArray (STArray s) a (ST s)"
+-- in the instance declaration, but we can't do that. our hack is that we have an unexported type, S,
+-- and we write "MArray (STArray S) a (ST S)" instead. because S is not exported, the only way the
+-- constraint can be satisfied is if it is true forall s. and then we use unsafeCoerce.
+-- this trick is borrowed from Edward Kmett's constraints library.
+
+-- capture and store the evidence for an MArray constraint in CPS form
 type WithMArray stArray s a = forall r. (MArray (stArray s) a (ST s) => r) -> r
 
+-- capture locally available evidence and store it
 mArray :: MArray (stArray s) a (ST s) => WithMArray stArray s a
 mArray a = a
 
--- do not export!!
+-- see NOTE above. do not export!
 newtype S = S S
 
+-- if we know MArray for S, it must be true forall s. make it so.
 anyS :: WithMArray stArray S a -> WithMArray stArray s a
 anyS = unsafeCoerce
 
+-- from locally available evidence of MArray for S, produce evidence we can use
+-- for any s. the first argument is just a dummy to bring type variables into scope,
+-- chosen to be convenient for the particular use sites we have.
 hack :: MArray (stArray S) a (ST S) => ST s (M2 stArray i a s) -> WithMArray stArray s a
 hack _ = anyS mArray
 
@@ -84,6 +101,8 @@ instance (Ix i, IArray Arr.UArray a, MArray (Arr.STUArray S) a (ST S)) => PhaseC
     unsafeThawImpl   a = r where r = hack r (liftM M2 $ Arr.unsafeThaw a)
     unsafeFreezeImpl a = hack (return a) (Arr.unsafeFreeze $ unM2 a)
     copyImpl         a = hack (return a) (liftM M2 . mapArray id . unM2 $ a)
+
+-- * vector
 
 -- | Data.Vector
 instance PhaseChange (Vec.Vector a) (M1 Vec.MVector a) where
@@ -116,11 +135,4 @@ instance Unbox a => PhaseChange (UVec.Vector a) (M1 UVec.MVector a) where
     unsafeThawImpl   = liftM M1 . UVec.unsafeThaw
     unsafeFreezeImpl = UVec.unsafeFreeze . unM1
     copyImpl         = liftM M1 . GVec.clone . unM1
-
-{-
-class Interfaceable a where
-    iface :: IfaceRep a
-
-icast :: Interfaceable a => a -> Maybe (Exists c)
--}
 

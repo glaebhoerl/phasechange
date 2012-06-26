@@ -1,11 +1,10 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, UndecidableInstances, Rank2Types, CPP #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, Rank2Types, CPP #-}
 
 #if __GLASGOW_HASKELL__ >= 704
 {-# LANGUAGE ConstraintKinds #-}
 #else
 {-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
 #endif
-
 
 {-# OPTIONS_HADDOCK hide #-}
 
