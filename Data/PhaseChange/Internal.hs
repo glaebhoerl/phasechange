@@ -100,7 +100,7 @@ thawImpl = copy <=< unsafeThaw
 {-# SPECIALIZE thawImpl :: PhaseChange imm mut => imm -> IO (mut (World IO)) #-}
 -- need to do this ugly thaw/thawImpl thing because I couldn't find any way at all to get
 -- the SPECIALIZE to work otherwise
--- (interestingly unsafeThaw has the same exact type signature and didn't run have problems...)
+-- (interestingly unsafeThaw has the same exact type signature and didn't have problems...)
 
 -- | Get a copy of mutable data in immutable form.
 freeze :: (Mutable mut, MonadST mST, s ~ World mST) => mut s -> mST (Frozen mut)
