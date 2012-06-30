@@ -4,7 +4,7 @@
 {-# LANGUAGE Unsafe #-}
 #endif
 
--- | This module allows you to write instances for PhaseChangeable data.
+-- | This module allows you to write instances for PhaseChangeable types.
 --   To work with PhaseChangeable data, see "Data.PhaseChange". For unsafe functions, see "Data.PhaseChange.Unsafe".
 module Data.PhaseChange.Impl
     (

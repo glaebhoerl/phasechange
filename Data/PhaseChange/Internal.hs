@@ -208,9 +208,9 @@ readWith1 f = readWith (f . unM1)
 {-# INLINE readWith1 #-}
 
 -- | Newtype for mutable types whose state thread parameter is in the third-to-last position
-newtype M2 t a b s = M2 { unM2 :: t s a b }
+newtype M2 mut a b s = M2 { unM2 :: mut s a b }
 
---instance Newtype (M2 t a b s) (t s a b) where
+--instance Newtype (M2 mut a b s) (mut s a b) where
 --    pack   = M2
 --    unpack = unM2
 
