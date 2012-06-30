@@ -62,11 +62,11 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
 -- * array
 
 -- NOTE
--- for the Array types, we need to use a hack: we want to write "forall s. MArray (STArray s) a (ST s)"
+-- for the Array types, we have to use a hack: we want to write "forall s. MArray (STArray s) a (ST s)"
 -- in the instance declaration, but we can't do that. our hack is that we have an unexported type, S,
 -- and we write "MArray (STArray S) a (ST S)" instead. because S is not exported, the only way the
 -- constraint can be satisfied is if it is true forall s. and then we use unsafeCoerce.
--- this trick is borrowed from Edward Kmett's constraints library.
+-- (this trick is borrowed from Edward Kmett's constraints library)
 
 -- capture and store the evidence for an MArray constraint in CPS form
 type WithMArray stArray s a = forall r. (MArray (stArray s) a (ST s) => r) -> r

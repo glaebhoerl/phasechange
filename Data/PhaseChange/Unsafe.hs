@@ -2,12 +2,12 @@
 
 module Data.PhaseChange.Unsafe
     (
--- * Kind @*@
-    unsafeThaw,  unsafeFreeze,
--- * Kind @* -> *@
-    unsafeThaw1, unsafeFreeze1,
--- * Kind @* -> * -> *@
-    unsafeThaw2, unsafeFreeze2
+-- * Unsafe functions
+    unsafeThaw,  unsafeFreeze,  readWith,
+-- * Convenience functions for working with @'M1'@
+    unsafeThaw1, unsafeFreeze1, readWith1,
+-- * Convenience functions for working with @'M2'@
+    unsafeThaw2, unsafeFreeze2, readWith2
     )
     where
 
