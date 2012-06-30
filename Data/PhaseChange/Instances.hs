@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, RankNTypes, MagicHash #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, FlexibleInstances, RankNTypes, MagicHash, UnboxedTuples #-}
 
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -8,6 +8,7 @@ module Data.PhaseChange.Instances () where
 
 import Data.PhaseChange.Internal
 import Control.Monad
+import Control.Monad.Primitive
 import Control.Monad.ST
 import Unsafe.Coerce
 import GHC.Exts
@@ -27,11 +28,15 @@ import Data.Vector.Unboxed         as UVec
 import Data.Vector.Storable        as SVec
 import Data.Vector.Generic.Mutable as GVec
 
+cloneMutableArray :: (PrimMonad m, s ~ PrimState m) => MutableArray s a -> Int -> Int -> m (MutableArray s a)
+cloneMutableArray (MutableArray a#) (I# begin#) (I# size#) =
+    primitive $ \s# -> case cloneMutableArray# a# begin# size# s#
+                       of (# s'#, a'# #) -> (# s'#, MutableArray a'# #)
+
+sizeofMutableArray :: MutableArray s a -> Int
+sizeofMutableArray (MutableArray a#) = I# (sizeofMutableArray# a#)
 
 -- * primitive
-
-sizeofMutableArray :: Prim.MutableArray s a -> Int
-sizeofMutableArray (MutableArray a) = I# (sizeofMutableArray# a)
 
 -- | Data.Primitive.ByteArray
 instance PhaseChange Prim.ByteArray Prim.MutableByteArray where
@@ -51,12 +56,7 @@ instance PhaseChange (Prim.Array a) (M1 Prim.MutableArray a) where
     type Frozen (M1 Prim.MutableArray a) = Prim.Array a
     unsafeThawImpl   = liftM M1 . unsafeThawArray
     unsafeFreezeImpl = unsafeFreezeArray . unM1
-    copyImpl mold = do
-        let old  = unM1 mold
-        let size = sizeofMutableArray old
-        new <- Prim.newArray size (error "this can't be happening!")
-        copyMutableArray new 0 old 0 size
-        return (M1 new)
+    copyImpl (M1 a)  = liftM M1 $ cloneMutableArray a 0 (sizeofMutableArray a)
 
 
 -- * array

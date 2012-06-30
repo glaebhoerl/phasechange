@@ -1,5 +1,11 @@
-{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE CPP #-}
 
+#if __GLASGOW_HASKELL__ >= 704
+{-# LANGUAGE Unsafe #-}
+#endif
+
+-- | This module provides functions on PhaseChangeable data which can break referential transparency if used incorrectly.
+--   For safe functions, see "Data.PhaseChange". To write an instance, see "Data.PhaseChange.Impl".
 module Data.PhaseChange.Unsafe
     (
 -- * Unsafe functions

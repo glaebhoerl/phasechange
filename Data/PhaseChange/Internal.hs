@@ -168,7 +168,7 @@ let (foo, vec')   = updateWithResult asdf vec
 readWith :: Immutable imm => (forall s. Thawed imm s -> ST s a) -> imm -> a
 readWith f i = runST $ do { m <- unsafeThaw i; r <- f m; _ <- unsafeFreeze m; return r }
 
--- | Newtype for mutable types whose state thread parameter is in the second-to-last position.
+-- | Newtype for mutable types whose state thread parameter is in the second-to-last position
 newtype M1 mut a s = M1 { unM1 :: mut s a }
 
 --instance Newtype (M1 mut a s) (mut s a) where
@@ -207,7 +207,7 @@ readWith1 :: PhaseChange (imm a) (M1 mut a) => (forall s. mut s a -> ST s b) -> 
 readWith1 f = readWith (f . unM1)
 {-# INLINE readWith1 #-}
 
--- | Newtype for mutable types whose state thread parameter is in the third-to-last position.
+-- | Newtype for mutable types whose state thread parameter is in the third-to-last position
 newtype M2 t a b s = M2 { unM2 :: t s a b }
 
 --instance Newtype (M2 t a b s) (t s a b) where
